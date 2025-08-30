@@ -107,10 +107,16 @@ detect_pod_details() {
             # Look for pattern like "213.173.105.84:49992->22 (pub,tcp)"
             ports_field = $NF
             
-            # Extract IP:PORT->22 pattern
-            if (match(ports_field, /([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+):([0-9]+)->22 \(pub,tcp\)/, arr)) {
-                ip = arr[1]
-                port = arr[2]
+            # Use gsub to extract IP and port from IP:PORT->22 pattern
+            if (match(ports_field, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+->22 \(pub,tcp\)/)) {
+                # Extract the matching part
+                ssh_mapping = substr(ports_field, RSTART, RLENGTH)
+                # Split on colon to get IP and port part
+                split(ssh_mapping, parts, ":")
+                ip = parts[1]
+                # Extract port number before ->22
+                split(parts[2], port_parts, "->")
+                port = port_parts[1]
                 print pod_id ":" ip ":" port
             }
         }
