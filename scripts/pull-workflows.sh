@@ -7,10 +7,10 @@ CONFIG_FILE="${SCRIPT_DIR}/../config/runpod.conf"
 LOCAL_WORKFLOWS_DIR="${SCRIPT_DIR}/../workflows"
 
 usage() {
-    echo "Usage: $0 <IP_ADDRESS> <SSH_PORT> [OPTIONS]"
+    echo "Usage: $0 [IP_ADDRESS] [SSH_PORT] [OPTIONS]"
     echo "Pull ComfyUI workflows from RunPod instance via SSH/rsync"
     echo ""
-    echo "Arguments:"
+    echo "Arguments (optional if runpodctl is available):"
     echo "  IP_ADDRESS        IPv4 address of the RunPod instance"
     echo "  SSH_PORT          SSH port exposed by RunPod"
     echo ""
@@ -22,9 +22,14 @@ usage() {
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 192.168.1.100 22"
-    echo "  $0 192.168.1.100 22 --user ubuntu --key ~/.ssh/runpod_key"
-    echo "  $0 192.168.1.100 22 --dry-run --verbose"
+    echo "  $0                                    # Auto-detect running pod"
+    echo "  $0 192.168.1.100 22                  # Explicit IP and port"
+    echo "  $0 --dry-run --verbose               # Auto-detect with options"
+    echo "  $0 192.168.1.100 22 --user ubuntu   # Explicit with options"
+    echo ""
+    echo "Auto-detection requirements:"
+    echo "  - runpodctl must be installed and configured"
+    echo "  - Exactly one pod must be running"
     echo ""
     echo "Configuration:"
     echo "  Edit config/runpod.conf to set default SSH settings and paths"
@@ -66,6 +71,75 @@ check_dependencies() {
         echo "Error: ssh not found. Please install openssh-client"
         exit 1
     fi
+}
+
+detect_pod_details() {
+    if ! command -v runpodctl >/dev/null 2>&1; then
+        echo "Error: runpodctl not found. Please install it or provide IP and port manually."
+        echo "  Install: https://github.com/runpod/runpodctl"
+        exit 1
+    fi
+    
+    echo "Auto-detecting running RunPod instance..."
+    
+    # Get list of running pods
+    local pods_json
+    pods_json=$(runpodctl get pod --output json 2>/dev/null) || {
+        echo "Error: Failed to get pod list from runpodctl"
+        echo "Please ensure runpodctl is configured with valid API key"
+        exit 1
+    }
+    
+    # Parse JSON to get running pods
+    local running_pods
+    running_pods=$(echo "$pods_json" | jq -r '.[] | select(.desiredStatus == "RUNNING" and .runtime != null) | .id' 2>/dev/null) || {
+        echo "Error: Failed to parse pod data (jq required for JSON parsing)"
+        echo "Please install jq or provide IP and port manually"
+        exit 1
+    }
+    
+    # Count running pods
+    local pod_count
+    pod_count=$(echo "$running_pods" | wc -l)
+    
+    if [[ -z "$running_pods" || "$pod_count" -eq 0 ]]; then
+        echo "Error: No running pods found"
+        echo "Please start a pod or provide IP and port manually"
+        exit 1
+    fi
+    
+    if [[ "$pod_count" -gt 1 ]]; then
+        echo "Error: Multiple running pods found ($pod_count)"
+        echo "Please specify IP and port manually or ensure only one pod is running"
+        echo "Running pods:"
+        echo "$running_pods"
+        exit 1
+    fi
+    
+    # Get the single running pod ID
+    local pod_id
+    pod_id=$(echo "$running_pods" | head -1)
+    
+    echo "Found running pod: $pod_id"
+    
+    # Get pod details
+    local pod_details
+    pod_details=$(runpodctl get pod "$pod_id" --output json 2>/dev/null) || {
+        echo "Error: Failed to get details for pod $pod_id"
+        exit 1
+    }
+    
+    # Extract IP and SSH port
+    POD_IP=$(echo "$pod_details" | jq -r '.runtime.ports["22/tcp"][0].ip // empty' 2>/dev/null)
+    POD_SSH_PORT=$(echo "$pod_details" | jq -r '.runtime.ports["22/tcp"][0].publicPort // empty' 2>/dev/null)
+    
+    if [[ -z "$POD_IP" || -z "$POD_SSH_PORT" ]]; then
+        echo "Error: Could not extract IP address or SSH port from pod details"
+        echo "Pod may not have SSH port exposed or is not fully started"
+        exit 1
+    fi
+    
+    echo "Detected pod details: $POD_IP:$POD_SSH_PORT"
 }
 
 test_ssh_connection() {
@@ -166,17 +240,21 @@ main() {
     local port=""
     local dry_run=false
     local verbose=false
+    local auto_detect=false
     
-    # Check for required arguments
-    if [[ $# -lt 2 ]]; then
-        echo "Error: IP address and SSH port are required"
+    # Check if first argument looks like an option or if no args provided
+    if [[ $# -eq 0 ]] || [[ "${1:-}" =~ ^- ]]; then
+        auto_detect=true
+    elif [[ $# -eq 1 ]]; then
+        echo "Error: If providing IP address, SSH port is also required"
         usage
         exit 1
+    else
+        # Extract IP and port from first two arguments
+        ip="$1"
+        port="$2"
+        shift 2
     fi
-    
-    ip="$1"
-    port="$2"
-    shift 2
     
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
@@ -218,6 +296,13 @@ main() {
     
     load_config
     check_dependencies
+    
+    # Auto-detect pod details if needed
+    if [[ "$auto_detect" == "true" ]]; then
+        detect_pod_details
+        ip="$POD_IP"
+        port="$POD_SSH_PORT"
+    fi
     
     # Expand tilde in SSH key path
     SSH_KEY="${SSH_KEY/#\~/$HOME}"

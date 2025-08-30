@@ -17,16 +17,19 @@ cp config/runpod.conf.example config/runpod.conf
 
 ### Workflow Sync (SSH-based)
 ```bash
-# Pull workflows from RunPod to local
-./scripts/pull-workflows.sh <IP_ADDRESS> <SSH_PORT>
+# Auto-detect running pod (requires runpodctl)
+./scripts/pull-workflows.sh
+./scripts/push-workflows.sh
 
-# Push workflows from local to RunPod
+# Explicit IP and port
+./scripts/pull-workflows.sh <IP_ADDRESS> <SSH_PORT>
 ./scripts/push-workflows.sh <IP_ADDRESS> <SSH_PORT>
 
 # Examples with options
-./scripts/pull-workflows.sh 192.168.1.100 22 --dry-run --verbose
-./scripts/push-workflows.sh 192.168.1.100 22 --user ubuntu --key ~/.ssh/runpod_key
-./scripts/push-workflows.sh 192.168.1.100 22 --clean
+./scripts/pull-workflows.sh --dry-run --verbose              # Auto-detect with options
+./scripts/push-workflows.sh --clean                          # Auto-detect with clean mode
+./scripts/pull-workflows.sh 192.168.1.100 22 --verbose      # Explicit IP with options
+./scripts/push-workflows.sh 192.168.1.100 22 --user ubuntu  # Explicit with custom user
 ```
 
 
@@ -53,5 +56,7 @@ Scripts validate required environment variables and provide helpful error messag
 ## Dependencies
 
 - rsync (for file synchronization)
-- ssh (for secure connections)
+- ssh (for secure connections)  
 - SSH key configured for RunPod instance access
+- runpodctl (for auto-detection, optional)
+- jq (for JSON parsing when using auto-detection)
