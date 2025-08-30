@@ -26,14 +26,9 @@ cp config/runpod.conf.example config/runpod.conf
 # Examples with options
 ./scripts/pull-workflows.sh 192.168.1.100 22 --dry-run --verbose
 ./scripts/push-workflows.sh 192.168.1.100 22 --user ubuntu --key ~/.ssh/runpod_key
-./scripts/push-workflows.sh 192.168.1.100 22 --no-delete
+./scripts/push-workflows.sh 192.168.1.100 22 --clean
 ```
 
-### Legacy S3 Sync (DEPRECATED)
-```bash
-# The old S3-based sync is deprecated due to reliability issues
-# ./scripts/sync-workflows.sh - redirects to new SSH commands
-```
 
 ## Architecture
 
@@ -46,7 +41,6 @@ cp config/runpod.conf.example config/runpod.conf
 All scripts source `config/runpod.conf` for:
 - SSH connection settings (user, key path)
 - Remote path mappings
-- Legacy S3 credentials (deprecated)
 
 Scripts validate required environment variables and provide helpful error messages for missing configuration.
 

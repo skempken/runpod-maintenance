@@ -19,14 +19,14 @@ usage() {
     echo "  -k, --key PATH    SSH private key path (default: ~/.ssh/id_rsa)"
     echo "  -d, --dry-run     Show what would be synced without making changes"
     echo "  -v, --verbose     Enable verbose output"
-    echo "  --no-delete       Don't delete files on remote that don't exist locally"
+    echo "  --clean           Delete remote files that don't exist locally"
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 192.168.1.100 22"
     echo "  $0 192.168.1.100 22 --user ubuntu --key ~/.ssh/runpod_key"
     echo "  $0 192.168.1.100 22 --dry-run --verbose"
-    echo "  $0 192.168.1.100 22 --no-delete"
+    echo "  $0 192.168.1.100 22 --clean"
     echo ""
     echo "Configuration:"
     echo "  Edit config/runpod.conf to set default SSH settings and paths"
@@ -141,7 +141,7 @@ push_workflows() {
     local key="$4"
     local dry_run_flag=""
     local verbose_flag=""
-    local delete_flag="--delete"
+    local delete_flag=""
     
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
         dry_run_flag="--dry-run"
@@ -153,9 +153,9 @@ push_workflows() {
         verbose_flag="-v"
     fi
     
-    if [[ "${NO_DELETE:-false}" == "true" ]]; then
-        delete_flag=""
-        echo "NO DELETE MODE: Remote files will not be deleted"
+    if [[ "${CLEAN:-false}" == "true" ]]; then
+        delete_flag="--delete"
+        echo "CLEAN MODE: Remote files not in local directory will be deleted"
     fi
     
     echo "Pushing workflows from local directory to RunPod..."
@@ -184,7 +184,7 @@ main() {
     local port=""
     local dry_run=false
     local verbose=false
-    local no_delete=false
+    local clean=false
     
     # Check for required arguments
     if [[ $# -lt 2 ]]; then
@@ -216,8 +216,8 @@ main() {
                 verbose=true
                 shift
                 ;;
-            --no-delete)
-                no_delete=true
+            --clean)
+                clean=true
                 shift
                 ;;
             -h|--help)
@@ -234,7 +234,7 @@ main() {
     
     export DRY_RUN=$dry_run
     export VERBOSE=$verbose
-    export NO_DELETE=$no_delete
+    export CLEAN=$clean
     
     echo "RunPod ComfyUI Workflow Push"
     echo "============================="

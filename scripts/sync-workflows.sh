@@ -7,8 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 usage() {
     echo "DEPRECATED: sync-workflows.sh"
     echo ""
-    echo "This script is deprecated due to RunPod S3 API reliability issues."
-    echo "Please use the new SSH-based sync scripts instead:"
+    echo "This script has been replaced with SSH-based sync scripts."
+    echo "Please use the new scripts instead:"
     echo ""
     echo "To pull workflows from RunPod:"
     echo "  ./scripts/pull-workflows.sh <IP_ADDRESS> <SSH_PORT> [OPTIONS]"
@@ -18,7 +18,7 @@ usage() {
     echo ""
     echo "Examples:"
     echo "  ./scripts/pull-workflows.sh 192.168.1.100 22"
-    echo "  ./scripts/push-workflows.sh 192.168.1.100 22 --dry-run"
+    echo "  ./scripts/push-workflows.sh 192.168.1.100 22 --clean"
     echo ""
     echo "For more information:"
     echo "  ./scripts/pull-workflows.sh --help"
@@ -30,8 +30,8 @@ main() {
     usage
     echo ""
     echo "Migration note:"
-    echo "The new SSH-based scripts provide more reliable synchronization"
-    echo "and don't require AWS CLI configuration."
+    echo "The new SSH-based scripts provide reliable synchronization"
+    echo "using rsync over SSH connections."
     echo ""
     exit 1
 }
