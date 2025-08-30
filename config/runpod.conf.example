@@ -6,11 +6,11 @@
 RUNPOD_SSH_USER="root"
 RUNPOD_SSH_KEY_PATH="~/.ssh/id_rsa"
 
-# Paths on your RunPod instance
+# Paths on your RunPod instance (absolute paths)
 # Adjust these based on your ComfyUI installation
-RUNPOD_WORKFLOWS_PATH="ComfyUI/user/workflows"
+RUNPOD_WORKFLOWS_PATH="/workspace/ComfyUI/user/workflows"
 
 # Optional: Additional sync paths (for future scripts)
-RUNPOD_MODELS_PATH="ComfyUI/models"
-RUNPOD_OUTPUTS_PATH="ComfyUI/output"
-RUNPOD_CUSTOM_NODES_PATH="ComfyUI/custom_nodes"
+RUNPOD_MODELS_PATH="/workspace/ComfyUI/models"
+RUNPOD_OUTPUTS_PATH="/workspace/ComfyUI/output"
+RUNPOD_CUSTOM_NODES_PATH="/workspace/ComfyUI/custom_nodes"
