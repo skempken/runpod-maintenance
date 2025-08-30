@@ -1,13 +1,10 @@
 # RunPod Configuration
 # Copy this file to runpod.conf and fill in your actual values
 
-# RunPod S3 API Credentials
-# Get these from your RunPod dashboard -> Settings -> S3 Credentials
-RUNPOD_S3_ENDPOINT="https://your-pod-id.s3.runpod.io"
-RUNPOD_S3_BUCKET="your-bucket-name"
-RUNPOD_S3_ACCESS_KEY="your-access-key"
-RUNPOD_S3_SECRET_KEY="your-secret-key"
-RUNPOD_S3_REGION="us-east-1"
+# SSH Connection Details
+# These can be overridden via command line arguments
+RUNPOD_SSH_USER="root"
+RUNPOD_SSH_KEY_PATH="~/.ssh/id_rsa"
 
 # Paths on your RunPod instance
 # Adjust these based on your ComfyUI installation
@@ -17,3 +14,12 @@ RUNPOD_WORKFLOWS_PATH="ComfyUI/user/workflows"
 RUNPOD_MODELS_PATH="ComfyUI/models"
 RUNPOD_OUTPUTS_PATH="ComfyUI/output"
 RUNPOD_CUSTOM_NODES_PATH="ComfyUI/custom_nodes"
+
+# Legacy S3 Configuration (for backward compatibility)
+# RunPod S3 API Credentials - DEPRECATED: Use SSH sync instead
+# Get these from your RunPod dashboard -> Settings -> S3 Credentials
+RUNPOD_S3_ENDPOINT="https://your-pod-id.s3.runpod.io"
+RUNPOD_S3_BUCKET="your-bucket-name"
+RUNPOD_S3_ACCESS_KEY="your-access-key"
+RUNPOD_S3_SECRET_KEY="your-secret-key"
+RUNPOD_S3_REGION="us-east-1"

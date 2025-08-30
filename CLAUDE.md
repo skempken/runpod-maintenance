@@ -4,27 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Collection of bash scripts for automating maintenance tasks on remote RunPod instances running ComfyUI. Scripts use RunPod's S3 API for file synchronization and management.
+Collection of bash scripts for automating maintenance tasks on remote RunPod instances running ComfyUI. Scripts use SSH/rsync for reliable file synchronization and management.
 
 ## Commands
 
 ### Setup
 ```bash
-# Copy and configure credentials
+# Copy and configure settings
 cp config/runpod.conf.example config/runpod.conf
-# Edit config/runpod.conf with your RunPod S3 credentials
+# Edit config/runpod.conf with your SSH settings and paths
 ```
 
-### Workflow Sync
+### Workflow Sync (SSH-based)
 ```bash
-# Sync workflows from RunPod to local
-./scripts/sync-workflows.sh
+# Pull workflows from RunPod to local
+./scripts/pull-workflows.sh <IP_ADDRESS> <SSH_PORT>
 
-# Dry run to see what would be synced
-./scripts/sync-workflows.sh --dry-run
+# Push workflows from local to RunPod
+./scripts/push-workflows.sh <IP_ADDRESS> <SSH_PORT>
 
-# Verbose output
-./scripts/sync-workflows.sh --verbose
+# Examples with options
+./scripts/pull-workflows.sh 192.168.1.100 22 --dry-run --verbose
+./scripts/push-workflows.sh 192.168.1.100 22 --user ubuntu --key ~/.ssh/runpod_key
+./scripts/push-workflows.sh 192.168.1.100 22 --no-delete
+```
+
+### Legacy S3 Sync (DEPRECATED)
+```bash
+# The old S3-based sync is deprecated due to reliability issues
+# ./scripts/sync-workflows.sh - redirects to new SSH commands
 ```
 
 ## Architecture
@@ -36,18 +44,20 @@ cp config/runpod.conf.example config/runpod.conf
 
 ### Configuration System
 All scripts source `config/runpod.conf` for:
-- RunPod S3 API credentials
+- SSH connection settings (user, key path)
 - Remote path mappings
-- Regional settings
+- Legacy S3 credentials (deprecated)
 
 Scripts validate required environment variables and provide helpful error messages for missing configuration.
 
 ### Error Handling
 - All scripts use `set -euo pipefail` for strict error handling
 - Dependencies are checked before execution
-- AWS CLI configuration is handled programmatically
+- SSH connectivity is tested before synchronization
+- Comprehensive validation of parameters and paths
 
 ## Dependencies
 
-- AWS CLI (installed via `brew install awscli` on macOS)
-- RunPod S3 credentials configured in `config/runpod.conf`
+- rsync (for file synchronization)
+- ssh (for secure connections)
+- SSH key configured for RunPod instance access
