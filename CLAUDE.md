@@ -59,4 +59,3 @@ Scripts validate required environment variables and provide helpful error messag
 - ssh (for secure connections)  
 - SSH key configured for RunPod instance access
 - runpodctl (for auto-detection, optional)
-- jq (for JSON parsing when using auto-detection)
