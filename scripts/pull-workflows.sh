@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Pull ComfyUI workflows from RunPod instance via SSH/rsync
+#
+# Copyright (c) 2025 Sebastian Kempken
+# Licensed under the MIT License - see LICENSE file for details
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

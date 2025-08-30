@@ -2,6 +2,9 @@
 
 # RunPod Common Library
 # Shared functions for RunPod automation scripts
+#
+# Copyright (c) 2025 Sebastian Kempken
+# Licensed under the MIT License - see LICENSE file for details
 
 # Get the directory where this library is located
 RUNPOD_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
