@@ -47,6 +47,27 @@ cp config/runpod.conf.example config/runpod.conf
 ./scripts/pull-outputs.sh 192.168.1.100 22 --copy          # Explicit with copy mode
 ```
 
+### Model Downloads (SSH-based)
+```bash
+# Single model downloads (auto-detect running pod)
+./scripts/download-models.sh diffusion_models runwayml/stable-diffusion-v1-5
+./scripts/download-models.sh vae stabilityai/sd-vae-ft-mse
+./scripts/download-models.sh clip openai/clip-vit-large-patch14
+
+# Download specific files only
+./scripts/download-models.sh diffusion_models runwayml/stable-diffusion-v1-5 "*.safetensors"
+./scripts/download-models.sh vae stabilityai/sd-vae-ft-mse "diffusion_pytorch_model.safetensors"
+
+# Batch downloads from configuration files
+./scripts/download-models.sh --models config/chroma-hd1.conf
+./scripts/download-models.sh --models config/models.conf.example
+./scripts/download-models.sh --dry-run --models config/chroma-hd1.conf
+
+# Explicit IP and port
+./scripts/download-models.sh 192.168.1.100 22 diffusion_models runwayml/stable-diffusion-v1-5
+./scripts/download-models.sh --models config/chroma-hd1.conf 192.168.1.100 22
+```
+
 
 ## Architecture
 
@@ -75,3 +96,4 @@ Scripts validate required environment variables and provide helpful error messag
 - ssh (for secure connections)  
 - SSH key configured for RunPod instance access
 - runpodctl (for auto-detection, optional)
+- huggingface-hub CLI (for model downloads, remote)
