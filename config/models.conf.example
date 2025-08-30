@@ -1,0 +1,23 @@
+# Model Download Configuration
+# Format: MODEL_TYPE:REPO:FILE_PATTERN
+# Lines starting with # are ignored
+# Empty lines are ignored
+#
+# MODEL_TYPE options: diffusion_models, vae, clip
+# FILE_PATTERN is optional - if omitted, downloads entire repository
+#
+# Examples:
+# diffusion_models:runwayml/stable-diffusion-v1-5:*.safetensors
+# vae:stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors
+# clip:openai/clip-vit-large-patch14
+
+# Essential Stable Diffusion models
+diffusion_models:runwayml/stable-diffusion-v1-5:*.safetensors
+diffusion_models:CompVis/stable-diffusion-v1-4:*.safetensors
+
+# VAE models for improved quality
+vae:stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors
+vae:stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors
+
+# CLIP models
+clip:openai/clip-vit-large-patch14:*.safetensors

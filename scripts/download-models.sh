@@ -36,12 +36,15 @@ SSH_KEY=""
 MODEL_REPO=""
 MODEL_TYPE=""
 FILE_PATTERN=""
+MODELS_CONFIG_FILE=""
+BATCH_MODE=false
 
 show_usage() {
     cat << 'EOF'
 Usage:
   ./download-models.sh [OPTIONS] <MODEL_TYPE> <MODEL_REPO> [FILE_PATTERN]
   ./download-models.sh [OPTIONS] <IP_ADDRESS> <SSH_PORT> <MODEL_TYPE> <MODEL_REPO> [FILE_PATTERN]
+  ./download-models.sh [OPTIONS] --models <CONFIG_FILE>
 
 Model Types:
   diffusion_models - Main stable diffusion models
@@ -52,6 +55,7 @@ Options:
   --dry-run        Show what would be downloaded without executing
   --verbose        Show detailed output
   --user USER      Override SSH username
+  --models FILE    Download models from configuration file (batch mode)
   --help           Show this help message
 
 Arguments:
@@ -60,9 +64,12 @@ Arguments:
   FILE_PATTERN     Optional file pattern or specific filename to download
                    Examples: "*.safetensors", "model.ckpt", "diffusion_pytorch_model.safetensors"
                    If omitted, downloads entire repository
+  CONFIG_FILE      Path to models configuration file for batch downloads
+                   Format: MODEL_TYPE:REPO[:FILE_PATTERN] (one per line)
+                   Lines starting with # are comments and will be ignored
 
 Examples:
-  # Auto-detect running pod
+  # Single model downloads (auto-detect running pod)
   ./download-models.sh diffusion_models runwayml/stable-diffusion-v1-5
   ./download-models.sh vae stabilityai/sd-vae-ft-mse
   ./download-models.sh clip openai/clip-vit-large-patch14
@@ -71,8 +78,14 @@ Examples:
   ./download-models.sh diffusion_models runwayml/stable-diffusion-v1-5 "*.safetensors"
   ./download-models.sh vae stabilityai/sd-vae-ft-mse "diffusion_pytorch_model.safetensors"
   
+  # Batch downloads from configuration file
+  ./download-models.sh --models config/essential-models.conf
+  ./download-models.sh --models ../my-custom-models.conf
+  ./download-models.sh --dry-run --models config/models.conf.example
+  
   # Explicit IP and port
   ./download-models.sh 192.168.1.100 22 diffusion_models runwayml/stable-diffusion-v1-5
+  ./download-models.sh --models config/essential-models.conf 192.168.1.100 22
   
   # With options
   ./download-models.sh --dry-run --verbose diffusion_models runwayml/stable-diffusion-v1-5 "*.ckpt"
@@ -180,8 +193,8 @@ download_model() {
         echo "  $remote_cmd"
     fi
     
-    # Execute the download command on the remote system
-    if ssh -i "$key" -p "$port" -o StrictHostKeyChecking=no "$user@$ip" "$remote_cmd"; then
+    # Execute the download command on the remote system with TTY for progress display
+    if ssh -t -i "$key" -p "$port" -o StrictHostKeyChecking=no "$user@$ip" "$remote_cmd"; then
         echo "Model download completed successfully!"
         echo "Model location: $user@$ip:$target_path"
     else
@@ -205,6 +218,11 @@ parse_arguments() {
                 SSH_USER="$2"
                 shift 2
                 ;;
+            --models)
+                MODELS_CONFIG_FILE="$2"
+                BATCH_MODE=true
+                shift 2
+                ;;
             --help)
                 show_usage
                 exit 0
@@ -220,36 +238,175 @@ parse_arguments() {
         esac
     done
     
-    # Parse positional arguments
-    if [[ $# -eq 2 ]]; then
-        # Format: MODEL_TYPE MODEL_REPO
-        MODEL_TYPE="$1"
-        MODEL_REPO="$2"
-    elif [[ $# -eq 3 ]]; then
-        # Format: MODEL_TYPE MODEL_REPO FILE_PATTERN
-        MODEL_TYPE="$1"
-        MODEL_REPO="$2"
-        FILE_PATTERN="$3"
-    elif [[ $# -eq 4 ]]; then
-        # Format: IP_ADDRESS SSH_PORT MODEL_TYPE MODEL_REPO
-        IP_ADDRESS="$1"
-        SSH_PORT="$2"
-        MODEL_TYPE="$3"
-        MODEL_REPO="$4"
-    elif [[ $# -eq 5 ]]; then
-        # Format: IP_ADDRESS SSH_PORT MODEL_TYPE MODEL_REPO FILE_PATTERN
-        IP_ADDRESS="$1"
-        SSH_PORT="$2"
-        MODEL_TYPE="$3"
-        MODEL_REPO="$4"
-        FILE_PATTERN="$5"
+    # Handle batch mode vs single model mode
+    if [[ "$BATCH_MODE" == "true" ]]; then
+        # Batch mode: --models CONFIG_FILE [IP_ADDRESS SSH_PORT]
+        if [[ $# -eq 0 ]]; then
+            # No additional arguments needed for auto-detection
+            :
+        elif [[ $# -eq 2 ]]; then
+            # Format: --models CONFIG_FILE IP_ADDRESS SSH_PORT
+            IP_ADDRESS="$1"
+            SSH_PORT="$2"
+        else
+            echo "Error: In batch mode, only IP_ADDRESS and SSH_PORT can be specified"
+            show_usage
+            exit 1
+        fi
     else
-        echo "Error: Invalid number of arguments"
-        show_usage
+        # Single model mode: parse positional arguments
+        if [[ $# -eq 2 ]]; then
+            # Format: MODEL_TYPE MODEL_REPO
+            MODEL_TYPE="$1"
+            MODEL_REPO="$2"
+        elif [[ $# -eq 3 ]]; then
+            # Format: MODEL_TYPE MODEL_REPO FILE_PATTERN
+            MODEL_TYPE="$1"
+            MODEL_REPO="$2"
+            FILE_PATTERN="$3"
+        elif [[ $# -eq 4 ]]; then
+            # Format: IP_ADDRESS SSH_PORT MODEL_TYPE MODEL_REPO
+            IP_ADDRESS="$1"
+            SSH_PORT="$2"
+            MODEL_TYPE="$3"
+            MODEL_REPO="$4"
+        elif [[ $# -eq 5 ]]; then
+            # Format: IP_ADDRESS SSH_PORT MODEL_TYPE MODEL_REPO FILE_PATTERN
+            IP_ADDRESS="$1"
+            SSH_PORT="$2"
+            MODEL_TYPE="$3"
+            MODEL_REPO="$4"
+            FILE_PATTERN="$5"
+        else
+            echo "Error: Invalid number of arguments"
+            show_usage
+            exit 1
+        fi
+        
+        validate_model_type "$MODEL_TYPE"
+    fi
+}
+
+parse_models_config() {
+    local config_file="$1"
+    
+    if [[ ! -f "$config_file" ]]; then
+        echo "Error: Models configuration file not found: $config_file" >&2
         exit 1
     fi
     
-    validate_model_type "$MODEL_TYPE"
+    echo "Loading models from configuration: $config_file" >&2
+    
+    # Parse the configuration file and return array of model specifications
+    local -a models=()
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip empty lines and comments
+        if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+        
+        # Trim leading/trailing whitespace
+        line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        
+        # Validate format: MODEL_TYPE:REPO[:FILE_PATTERN]
+        if [[ "$line" =~ ^[^:]+:[^:]+(:.*)?$ ]]; then
+            models+=("$line")
+        else
+            echo "Warning: Invalid line format in $config_file: $line" >&2
+            echo "Expected format: MODEL_TYPE:REPO[:FILE_PATTERN]" >&2
+        fi
+    done < "$config_file"
+    
+    if [[ ${#models[@]} -eq 0 ]]; then
+        echo "Error: No valid model configurations found in $config_file" >&2
+        exit 1
+    fi
+    
+    echo "Found ${#models[@]} model(s) to download" >&2
+    
+    # Output only the models array for use in main function
+    printf '%s\n' "${models[@]}"
+}
+
+download_models_batch() {
+    local ip="$1"
+    local port="$2"  
+    local user="$3"
+    local key="$4"
+    local hf_cli_path="$5"
+    local models_config="$6"
+    
+    echo "=== RunPod Batch Model Download ==="
+    echo "Pod: $ip:$port"
+    echo "Config: $models_config"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Mode: DRY RUN"
+    fi
+    echo
+    
+    # Parse models configuration
+    local -a models
+    while IFS= read -r line; do
+        models+=("$line")
+    done < <(parse_models_config "$models_config")
+    
+    local total_models=${#models[@]}
+    local current_model=0
+    local failed_downloads=0
+    
+    for model_spec in "${models[@]}"; do
+        current_model=$((current_model + 1))
+        
+        echo "=== Model $current_model/$total_models ==="
+        
+        # Parse model specification: MODEL_TYPE:REPO[:FILE_PATTERN]  
+        local model_type model_repo file_pattern
+        IFS=':' read -r model_type model_repo file_pattern <<< "$model_spec"
+        
+        # Validate model type
+        if ! validate_model_type "$model_type" 2>/dev/null; then
+            echo "Error: Invalid model type '$model_type' in specification: $model_spec"
+            failed_downloads=$((failed_downloads + 1))
+            continue
+        fi
+        
+        # Get target path for the model type
+        local target_path
+        target_path=$(get_model_path_for_type "$model_type")
+        
+        echo "Downloading: $model_repo"
+        if [[ -n "$file_pattern" ]]; then
+            echo "File pattern: $file_pattern"
+        fi
+        echo "Target: $target_path"
+        echo
+        
+        # Download the model (reuse existing download_model function)
+        if download_model "$ip" "$port" "$user" "$key" "$model_repo" "$target_path" "$hf_cli_path" "$file_pattern"; then
+            echo "✓ Model $current_model/$total_models completed successfully"
+        else
+            echo "✗ Model $current_model/$total_models failed"
+            failed_downloads=$((failed_downloads + 1))
+        fi
+        
+        echo
+    done
+    
+    # Summary
+    local successful_downloads=$((total_models - failed_downloads))
+    echo "=== Batch Download Summary ==="
+    echo "Total models: $total_models"
+    echo "Successful: $successful_downloads"
+    echo "Failed: $failed_downloads"
+    
+    if [[ $failed_downloads -gt 0 ]]; then
+        echo
+        echo "Some downloads failed. Check the output above for details."
+        exit 1
+    else
+        echo
+        echo "All models downloaded successfully!"
+    fi
 }
 
 main() {
@@ -279,30 +436,36 @@ main() {
     
     setup_runpod_ssh_key
     
-    echo "=== RunPod Model Download ==="
-    echo "Pod: $IP_ADDRESS:$SSH_PORT"
-    echo "Model: $MODEL_REPO"
-    echo "Type: $MODEL_TYPE"
-    if [[ -n "$FILE_PATTERN" ]]; then
-        echo "Files: $FILE_PATTERN"
-    fi
-    
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "Mode: DRY RUN"
-    fi
-    echo
-    
     # Test connection and check dependencies
     test_runpod_ssh_connection "$IP_ADDRESS" "$SSH_PORT" "$SSH_USER" "$SSH_KEY"
     check_hf_cli_on_remote "$IP_ADDRESS" "$SSH_PORT" "$SSH_USER" "$SSH_KEY" "$RUNPOD_HF_CLI_PATH"
     
-    # Get target path for the model type
-    TARGET_PATH=$(get_model_path_for_type "$MODEL_TYPE")
-    
-    # Download the model
-    download_model "$IP_ADDRESS" "$SSH_PORT" "$SSH_USER" "$SSH_KEY" "$MODEL_REPO" "$TARGET_PATH" "$RUNPOD_HF_CLI_PATH" "$FILE_PATTERN"
-    
-    echo "Model download process completed!"
+    if [[ "$BATCH_MODE" == "true" ]]; then
+        # Batch download mode
+        download_models_batch "$IP_ADDRESS" "$SSH_PORT" "$SSH_USER" "$SSH_KEY" "$RUNPOD_HF_CLI_PATH" "$MODELS_CONFIG_FILE"
+    else
+        # Single model download mode
+        echo "=== RunPod Model Download ==="
+        echo "Pod: $IP_ADDRESS:$SSH_PORT"
+        echo "Model: $MODEL_REPO"
+        echo "Type: $MODEL_TYPE"
+        if [[ -n "$FILE_PATTERN" ]]; then
+            echo "Files: $FILE_PATTERN"
+        fi
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "Mode: DRY RUN"
+        fi
+        echo
+        
+        # Get target path for the model type
+        TARGET_PATH=$(get_model_path_for_type "$MODEL_TYPE")
+        
+        # Download the model
+        download_model "$IP_ADDRESS" "$SSH_PORT" "$SSH_USER" "$SSH_KEY" "$MODEL_REPO" "$TARGET_PATH" "$RUNPOD_HF_CLI_PATH" "$FILE_PATTERN"
+        
+        echo "Model download process completed!"
+    fi
 }
 
 # Only run main if script is executed directly (not sourced)
