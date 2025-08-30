@@ -32,10 +32,11 @@ load_config() {
     source "$CONFIG_FILE"
     
     # Validate required variables
-    if [[ -z "${RUNPOD_S3_ENDPOINT:-}" ]] || [[ -z "${RUNPOD_S3_ACCESS_KEY:-}" ]] || \
-       [[ -z "${RUNPOD_S3_SECRET_KEY:-}" ]] || [[ -z "${RUNPOD_WORKFLOWS_PATH:-}" ]]; then
+    if [[ -z "${RUNPOD_S3_ENDPOINT:-}" ]] || [[ -z "${RUNPOD_S3_BUCKET:-}" ]] || \
+       [[ -z "${RUNPOD_S3_ACCESS_KEY:-}" ]] || [[ -z "${RUNPOD_S3_SECRET_KEY:-}" ]] || \
+       [[ -z "${RUNPOD_WORKFLOWS_PATH:-}" ]]; then
         echo "Error: Missing required configuration in $CONFIG_FILE"
-        echo "Required variables: RUNPOD_S3_ENDPOINT, RUNPOD_S3_ACCESS_KEY, RUNPOD_S3_SECRET_KEY, RUNPOD_WORKFLOWS_PATH"
+        echo "Required variables: RUNPOD_S3_ENDPOINT, RUNPOD_S3_BUCKET, RUNPOD_S3_ACCESS_KEY, RUNPOD_S3_SECRET_KEY, RUNPOD_WORKFLOWS_PATH"
         exit 1
     fi
 }
@@ -71,7 +72,7 @@ sync_workflows() {
     fi
     
     echo "Syncing workflows from RunPod to local directory..."
-    echo "Remote path: s3://$RUNPOD_WORKFLOWS_PATH"
+    echo "Remote path: s3://$RUNPOD_S3_BUCKET/$RUNPOD_WORKFLOWS_PATH"
     echo "Local path: $LOCAL_WORKFLOWS_DIR"
     echo ""
     
@@ -86,7 +87,7 @@ sync_workflows() {
         --delete \
         --exclude "*.tmp" \
         --exclude ".DS_Store" \
-        "s3://$RUNPOD_WORKFLOWS_PATH" \
+        "s3://$RUNPOD_S3_BUCKET/$RUNPOD_WORKFLOWS_PATH" \
         "$LOCAL_WORKFLOWS_DIR"
     
     if [[ "${DRY_RUN:-false}" != "true" ]]; then

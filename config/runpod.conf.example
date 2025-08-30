@@ -4,6 +4,7 @@
 # RunPod S3 API Credentials
 # Get these from your RunPod dashboard -> Settings -> S3 Credentials
 RUNPOD_S3_ENDPOINT="https://your-pod-id.s3.runpod.io"
+RUNPOD_S3_BUCKET="your-bucket-name"
 RUNPOD_S3_ACCESS_KEY="your-access-key"
 RUNPOD_S3_SECRET_KEY="your-secret-key"
 RUNPOD_S3_REGION="us-east-1"
