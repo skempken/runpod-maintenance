@@ -19,3 +19,20 @@ RUNPOD_CUSTOM_NODES_PATH="/workspace/ComfyUI/custom_nodes"
 # These will be created automatically if they don't exist
 # Leave empty to use default locations under the project directory
 LOCAL_OUTPUTS_PATH="$HOME/ComfyUI/outputs"
+
+# Hugging Face CLI Configuration
+# Path to the huggingface-hub CLI on the remote system
+RUNPOD_HF_CLI_PATH="/usr/local/bin/huggingface-cli"
+
+# Model download paths on RunPod instance
+# These subdirectories will be created under RUNPOD_MODELS_PATH
+RUNPOD_DIFFUSION_MODELS_PATH="$RUNPOD_MODELS_PATH/diffusion_models"
+RUNPOD_VAE_MODELS_PATH="$RUNPOD_MODELS_PATH/vae" 
+RUNPOD_CLIP_MODELS_PATH="$RUNPOD_MODELS_PATH/clip"
+
+# Hugging Face environment variables for remote execution
+# Set these if you need authentication or specific configurations
+HF_TOKEN=""  # Leave empty to use system default or set your token
+HF_HUB_CACHE=""  # Leave empty to use default cache location
+HF_XET_HIGH_PERFORMANCE="True"  # Enable high performance mode
+HF_HUB_ENABLE_HF_TRANSFER="1"   # Enable fast transfer protocol
