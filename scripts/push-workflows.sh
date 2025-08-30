@@ -99,15 +99,14 @@ detect_pod_details() {
     # Skip header line and filter for RUNNING status with SSH port (->22)
     local running_pods_info
     running_pods_info=$(echo "$pod_output" | awk '
-        NR > 1 && /RUNNING/ && /->22 \(pub,tcp\)/ {
+        NR > 1 && /RUNNING/ && /->22/ {
             pod_id = $1
-            # The entire line contains the ports in the last part
-            # Look for IP:PORT->22 (pub,tcp) pattern in the whole line
-            if (match($0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+->22 \(pub,tcp\)/)) {
+            # Look for IP:PORT->22 pattern in the whole line
+            if (match($0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+->22/)) {
                 # Extract the matched substring
                 ssh_part = substr($0, RSTART, RLENGTH)
-                # Remove the ->22 (pub,tcp) part
-                gsub(/->22 \(pub,tcp\)/, "", ssh_part)
+                # Remove the ->22 part
+                gsub(/->22.*/, "", ssh_part)
                 # Split IP:PORT
                 split(ssh_part, addr_parts, ":")
                 if (length(addr_parts) == 2) {
@@ -118,9 +117,6 @@ detect_pod_details() {
             }
         }
     ')
-    
-    # Debug output (remove this later)
-    echo "Debug: running_pods_info='$running_pods_info'"
     
     # Count running pods with SSH
     local pod_count
