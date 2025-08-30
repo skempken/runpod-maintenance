@@ -6,6 +6,9 @@ Collection of bash scripts for automating maintenance tasks on remote RunPod ins
 
 - **Auto-detection** of running RunPod instances via `runpodctl`
 - **SSH/rsync synchronization** for reliable file transfers
+- **Model downloads** directly to remote pods via Hugging Face CLI
+- **Batch operations** using configurable model sets
+- **Output management** with organized timestamp directories
 - **Automatic rsync installation** on Ubuntu-based pods
 - **Comprehensive error handling** and validation
 - **Safe defaults** (push doesn't delete by default)
@@ -23,8 +26,15 @@ cp config/runpod.conf.example config/runpod.conf
 ### Basic Usage
 ```bash
 # Auto-detect running pod and sync workflows
-./scripts/pull-workflows.sh   # Download from RunPod
-./scripts/push-workflows.sh   # Upload to RunPod
+./scripts/pull-workflows.sh   # Download workflows from RunPod
+./scripts/push-workflows.sh   # Upload workflows to RunPod
+
+# Download models to RunPod
+./scripts/download-models.sh diffusion_models runwayml/stable-diffusion-v1-5
+./scripts/download-models.sh --models config/chroma-hd1.conf
+
+# Manage outputs
+./scripts/pull-outputs.sh     # Download generated outputs from RunPod
 ```
 
 ### Advanced Usage
@@ -40,7 +50,9 @@ cp config/runpod.conf.example config/runpod.conf
 
 ## Commands
 
-### Pull Workflows
+### Workflow Management
+
+#### Pull Workflows
 ```bash
 ./scripts/pull-workflows.sh [IP_ADDRESS] [SSH_PORT] [OPTIONS]
 ```
@@ -53,7 +65,7 @@ Downloads ComfyUI workflows from RunPod to local `workflows/` directory.
 - `-v, --verbose` - Enable verbose output
 - `-h, --help` - Show help message
 
-### Push Workflows
+#### Push Workflows
 ```bash
 ./scripts/push-workflows.sh [IP_ADDRESS] [SSH_PORT] [OPTIONS]
 ```
@@ -65,6 +77,59 @@ Uploads local workflows to RunPod instance. **Safe by default** - preserves remo
 - `-d, --dry-run` - Preview changes without modifying files
 - `-v, --verbose` - Enable verbose output
 - `--clean` - Delete remote files that don't exist locally
+- `-h, --help` - Show help message
+
+### Model Downloads
+
+#### Single Model Downloads
+```bash
+./scripts/download-models.sh <MODEL_TYPE> <MODEL_REPO> [FILE_PATTERN]
+./scripts/download-models.sh [IP_ADDRESS] [SSH_PORT] <MODEL_TYPE> <MODEL_REPO> [FILE_PATTERN]
+```
+
+**Model Types:** `diffusion_models`, `vae`, `clip`
+
+**Examples:**
+```bash
+./scripts/download-models.sh diffusion_models runwayml/stable-diffusion-v1-5
+./scripts/download-models.sh vae stabilityai/sd-vae-ft-mse "diffusion_pytorch_model.safetensors"
+./scripts/download-models.sh clip openai/clip-vit-large-patch14 "*.safetensors"
+```
+
+#### Batch Model Downloads
+```bash
+./scripts/download-models.sh --models <CONFIG_FILE> [IP_ADDRESS] [SSH_PORT]
+```
+
+**Examples:**
+```bash
+./scripts/download-models.sh --models config/chroma-hd1.conf
+./scripts/download-models.sh --models config/models.conf.example
+./scripts/download-models.sh --dry-run --models config/chroma-hd1.conf
+```
+
+**Configuration Format:** Create files like `config/chroma-hd1.conf` with:
+```
+# Model configuration - one per line
+diffusion_models:runwayml/stable-diffusion-v1-5:*.safetensors
+vae:stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors
+clip:openai/clip-vit-large-patch14
+```
+
+### Output Management
+
+#### Pull Outputs
+```bash
+./scripts/pull-outputs.sh [IP_ADDRESS] [SSH_PORT] [OPTIONS]
+```
+Downloads ComfyUI generated outputs from RunPod to local `outputs/` directory, organized by timestamp.
+
+**Options:**
+- `-u, --user USER` - SSH username (default: root)
+- `-k, --key PATH` - SSH private key path (default: ~/.ssh/id_rsa)
+- `-d, --dry-run` - Preview changes without modifying files
+- `-v, --verbose` - Enable verbose output
+- `--copy` - Copy files instead of moving them (leave on remote)
 - `-h, --help` - Show help message
 
 ## Auto-Detection
@@ -105,6 +170,7 @@ RUNPOD_WORKFLOWS_PATH="/workspace/ComfyUI/user/workflows"
 - **ssh** - Secure connections  
 - **SSH key** configured for RunPod instance access
 - **runpodctl** (optional) - For auto-detection
+- **huggingface-hub CLI** (remote) - For model downloads on RunPod instances
 
 ### Installation
 ```bash
@@ -118,9 +184,10 @@ apt-get install rsync openssh-client
 ## Architecture
 
 ### Directory Structure
-- `scripts/` - Executable bash scripts
-- `config/` - Configuration files
-- `workflows/` - Local copy of synced ComfyUI workflows
+- `scripts/` - Executable bash scripts for RunPod maintenance
+- `config/` - Configuration files (credentials and model sets)
+- `workflows/` - Local copy of synced ComfyUI workflows  
+- `outputs/` - Downloaded ComfyUI generated outputs (organized by timestamp)
 
 ### Shared Library
 Scripts use `runpod-common.sh` for shared functionality:
@@ -143,6 +210,9 @@ Scripts use `runpod-common.sh` for shared functionality:
 cp config/runpod.conf.example config/runpod.conf
 # Edit configuration file
 
+# Download essential models to RunPod
+./scripts/download-models.sh --models config/chroma-hd1.conf
+
 # Download workflows from RunPod
 ./scripts/pull-workflows.sh
 
@@ -152,6 +222,9 @@ cp config/runpod.conf.example config/runpod.conf
 # Upload changes back to RunPod
 ./scripts/push-workflows.sh --dry-run  # Preview first
 ./scripts/push-workflows.sh           # Safe upload (preserves remote files)
+
+# Download generated outputs
+./scripts/pull-outputs.sh
 ```
 
 ### Multiple RunPods
