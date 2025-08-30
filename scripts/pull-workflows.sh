@@ -95,31 +95,36 @@ detect_pod_details() {
     local running_pods_info
     running_pods_info=$(echo "$pod_output" | awk '
         NR > 1 && /RUNNING/ && /->22 \(pub,tcp\)/ {
-            # Extract pod ID (first column)
             pod_id = $1
-            
-            # Find SSH port mapping in PORTS column (last field)
-            # Look for pattern like "213.173.105.84:49992->22 (pub,tcp)"
-            ports_field = $NF
-            
-            # Use gsub to extract IP and port from IP:PORT->22 pattern
-            if (match(ports_field, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+->22 \(pub,tcp\)/)) {
-                # Extract the matching part
-                ssh_mapping = substr(ports_field, RSTART, RLENGTH)
-                # Split on colon to get IP and port part
-                split(ssh_mapping, parts, ":")
-                ip = parts[1]
-                # Extract port number before ->22
-                split(parts[2], port_parts, "->")
-                port = port_parts[1]
-                print pod_id ":" ip ":" port
+            # Process entire line to find SSH port mapping
+            for (i = 1; i <= NF; i++) {
+                # Look for field containing ->22 (pub,tcp)
+                if ($i ~ /->22 \(pub,tcp\)/) {
+                    # Extract IP:PORT from the field before ->22
+                    gsub(/->22 \(pub,tcp\).*/, "", $i)
+                    # Split IP:PORT
+                    split($i, addr_parts, ":")
+                    if (length(addr_parts) >= 2) {
+                        ip = addr_parts[1]
+                        port = addr_parts[2]
+                        print pod_id ":" ip ":" port
+                    }
+                    break
+                }
             }
         }
     ')
     
+    # Debug output (remove this later)
+    echo "Debug: running_pods_info='$running_pods_info'"
+    
     # Count running pods with SSH
     local pod_count
-    pod_count=$(echo "$running_pods_info" | grep -c "." 2>/dev/null || echo "0")
+    if [[ -z "$running_pods_info" ]]; then
+        pod_count=0
+    else
+        pod_count=$(echo "$running_pods_info" | grep -c ":" 2>/dev/null || echo "0")
+    fi
     
     if [[ "$pod_count" -eq 0 ]]; then
         echo "Error: No running pods with SSH port found"
