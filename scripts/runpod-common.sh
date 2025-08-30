@@ -29,6 +29,12 @@ load_runpod_config() {
         exit 1
     fi
     
+    # Expand tilde in local paths
+    if [[ -n "${LOCAL_OUTPUTS_PATH:-}" ]]; then
+        LOCAL_OUTPUTS_PATH="${LOCAL_OUTPUTS_PATH/#\~/$HOME}"
+        export LOCAL_OUTPUTS_PATH
+    fi
+    
     # Set defaults from config if not overridden
     SSH_USER="${SSH_USER:-${RUNPOD_SSH_USER:-root}}"
     SSH_KEY="${SSH_KEY:-${RUNPOD_SSH_KEY_PATH:-~/.ssh/id_rsa}}"

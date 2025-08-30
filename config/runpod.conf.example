@@ -14,3 +14,8 @@ RUNPOD_WORKFLOWS_PATH="/workspace/ComfyUI/user/workflows"
 RUNPOD_MODELS_PATH="/workspace/ComfyUI/models"
 RUNPOD_OUTPUTS_PATH="/workspace/ComfyUI/output"
 RUNPOD_CUSTOM_NODES_PATH="/workspace/ComfyUI/custom_nodes"
+
+# Local paths for downloaded content
+# These will be created automatically if they don't exist
+# Leave empty to use default locations under the project directory
+LOCAL_OUTPUTS_PATH="$HOME/ComfyUI/outputs"
