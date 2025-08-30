@@ -90,6 +90,32 @@ test_ssh_connection() {
     echo "SSH connection test successful!"
 }
 
+ensure_remote_rsync() {
+    local ip="$1"
+    local port="$2"
+    local user="$3"
+    local key="$4"
+    
+    echo "Checking rsync availability on remote system..."
+    
+    if ! ssh -i "$key" -p "$port" -o StrictHostKeyChecking=no "$user@$ip" \
+         "command -v rsync >/dev/null 2>&1" 2>/dev/null; then
+        echo "rsync not found on remote system. Installing..."
+        
+        ssh -i "$key" -p "$port" -o StrictHostKeyChecking=no "$user@$ip" \
+            "apt update >/dev/null 2>&1 && apt install -y rsync >/dev/null 2>&1" || {
+            echo "Error: Failed to install rsync on remote system"
+            echo "Please install rsync manually on the RunPod instance:"
+            echo "  apt update && apt install -y rsync"
+            exit 1
+        }
+        
+        echo "rsync installed successfully on remote system"
+    else
+        echo "rsync is available on remote system"
+    fi
+}
+
 pull_workflows() {
     local ip="$1"
     local port="$2"
@@ -203,6 +229,7 @@ main() {
     fi
     
     test_ssh_connection "$ip" "$port" "$SSH_USER" "$SSH_KEY"
+    ensure_remote_rsync "$ip" "$port" "$SSH_USER" "$SSH_KEY"
     pull_workflows "$ip" "$port" "$SSH_USER" "$SSH_KEY"
 }
 
