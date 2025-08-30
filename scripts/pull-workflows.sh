@@ -90,25 +90,40 @@ detect_pod_details() {
         exit 1
     }
     
+    # Debug: Show raw output
+    echo "Debug: Raw runpodctl output:"
+    echo "$pod_output"
+    echo "---"
+    
     # Parse output to get running pods with SSH ports
     # Skip header line and filter for RUNNING status with SSH port (->22)
     local running_pods_info
     running_pods_info=$(echo "$pod_output" | awk '
-        NR > 1 && /RUNNING/ && /->22 \(pub,tcp\)/ {
-            pod_id = $1
-            # The entire line contains the ports in the last part
-            # Look for IP:PORT->22 (pub,tcp) pattern in the whole line
-            if (match($0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+->22 \(pub,tcp\)/)) {
-                # Extract the matched substring
-                ssh_part = substr($0, RSTART, RLENGTH)
-                # Remove the ->22 (pub,tcp) part
-                gsub(/->22 \(pub,tcp\)/, "", ssh_part)
-                # Split IP:PORT
-                split(ssh_part, addr_parts, ":")
-                if (length(addr_parts) == 2) {
-                    ip = addr_parts[1]
-                    port = addr_parts[2]
-                    print pod_id ":" ip ":" port
+        NR > 1 {
+            print "Debug awk line " NR ": " $0
+            if (/RUNNING/) {
+                print "Debug: Found RUNNING line"
+                if (/->22/) {
+                    print "Debug: Found ->22 pattern"
+                    pod_id = $1
+                    # Look for IP:PORT->22 pattern in the whole line
+                    if (match($0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+->22/)) {
+                        print "Debug: Matched IP:PORT->22 pattern"
+                        # Extract the matched substring
+                        ssh_part = substr($0, RSTART, RLENGTH)
+                        print "Debug: ssh_part = " ssh_part
+                        # Remove the ->22 part
+                        gsub(/->22.*/, "", ssh_part)
+                        print "Debug: after gsub = " ssh_part
+                        # Split IP:PORT
+                        split(ssh_part, addr_parts, ":")
+                        if (length(addr_parts) == 2) {
+                            ip = addr_parts[1]
+                            port = addr_parts[2]
+                            print "Debug: ip=" ip " port=" port
+                            print pod_id ":" ip ":" port
+                        }
+                    }
                 }
             }
         }
