@@ -117,6 +117,7 @@ push_workflows() {
     
     # Push workflows via rsync over SSH
     rsync -avz $dry_run_flag $verbose_flag $delete_flag \
+        --no-owner --no-group \
         --exclude="*.tmp" \
         --exclude=".DS_Store" \
         --exclude="__pycache__/" \
