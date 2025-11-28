@@ -1,23 +1,24 @@
 # Model Download Configuration
-# Format: MODEL_TYPE:REPO:FILE_PATTERN
+# Format: MODEL_TYPE:REPO:FILE_PATH
 # Lines starting with # are ignored
 # Empty lines are ignored
 #
 # MODEL_TYPE options: diffusion_models, vae, clip
-# FILE_PATTERN is optional - if omitted, downloads entire repository
+# FILE_PATH specifies the exact file path within the HF repository
+# Files are downloaded flat (only the filename is kept, no subdirectories)
 #
 # Examples:
-# diffusion_models:runwayml/stable-diffusion-v1-5:*.safetensors
-# vae:stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors
-# clip:openai/clip-vit-large-patch14
+# diffusion_models:Comfy-Org/flux2-dev:split_files/diffusion_models/flux2_dev_fp8mixed.safetensors
+# vae:Comfy-Org/flux2-dev:split_files/vae/flux2-vae.safetensors
+# clip:kajaks/gner-t5-xxl-encoder:gner-t5-xxl-encoder.safetensors
 
 # Essential Stable Diffusion models
-diffusion_models:runwayml/stable-diffusion-v1-5:*.safetensors
-diffusion_models:CompVis/stable-diffusion-v1-4:*.safetensors
+diffusion_models:runwayml/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors
+diffusion_models:CompVis/stable-diffusion-v1-4:sd-v1-4.ckpt
 
 # VAE models for improved quality
 vae:stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors
 vae:stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors
 
 # CLIP models
-clip:openai/clip-vit-large-patch14:*.safetensors
+clip:openai/clip-vit-large-patch14:model.safetensors

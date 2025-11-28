@@ -61,11 +61,14 @@ Options:
 Arguments:
   MODEL_TYPE       Target model type (diffusion_models, vae, clip)
   MODEL_REPO       Hugging Face model repository (e.g., runwayml/stable-diffusion-v1-5)
-  FILE_PATTERN     Optional file pattern or specific filename to download
-                   Examples: "*.safetensors", "model.ckpt", "diffusion_pytorch_model.safetensors"
+  FILE_PATH        Optional path to specific file within the repository
+                   Examples: "model.safetensors", "split_files/vae/ae.safetensors"
+                   The file is downloaded flat (only filename, no subdirectories)
                    If omitted, downloads entire repository
   CONFIG_FILE      Path to models configuration file for batch downloads
-                   Format: MODEL_TYPE:REPO[:FILE_PATTERN] (one per line)
+                   Format: MODEL_TYPE:REPO[:FILE_PATH] (one per line)
+                   The FILE_PATH specifies the exact file in the HF repo
+                   Files are downloaded flat (only filename kept, no subdirectories)
                    Lines starting with # are comments and will be ignored
 
 Examples:
@@ -152,14 +155,14 @@ download_model() {
     local model_repo="$5"
     local target_path="$6"
     local hf_cli_path="$7"
-    local file_pattern="$8"
-    
+    local hf_file_path="$8"
+
     echo "Downloading model: $model_repo"
-    if [[ -n "$file_pattern" ]]; then
-        echo "File pattern: $file_pattern"
+    if [[ -n "$hf_file_path" ]]; then
+        echo "File: $hf_file_path"
     fi
     echo "Target path: $target_path"
-    
+
     # Build environment variables for remote execution
     local env_vars=""
     if [[ -n "${HF_TOKEN:-}" ]]; then
@@ -174,29 +177,41 @@ download_model() {
     if [[ -n "${HF_HUB_ENABLE_HF_TRANSFER:-}" ]]; then
         env_vars="$env_vars HF_HUB_ENABLE_HF_TRANSFER='$HF_HUB_ENABLE_HF_TRANSFER'"
     fi
-    
+
     # Build the remote command
-    local download_cmd="'$hf_cli_path' download '$model_repo' --local-dir ."
-    if [[ -n "$file_pattern" ]]; then
-        download_cmd="$download_cmd --include '$file_pattern'"
+    local remote_cmd
+    if [[ -n "$hf_file_path" ]]; then
+        # Download specific file and place it flat in target directory (no subdirectories)
+        local filename
+        filename=$(basename "$hf_file_path")
+        # Download to cache, then copy only the file (not the directory structure)
+        local download_cmd="$env_vars '$hf_cli_path' download '$model_repo' '$hf_file_path'"
+        remote_cmd="mkdir -p '$target_path' && downloaded_path=\$($download_cmd) && cp \"\$downloaded_path\" '$target_path/$filename'"
+    else
+        # Download entire repository to target directory
+        local download_cmd="'$hf_cli_path' download '$model_repo' --local-dir ."
+        remote_cmd="mkdir -p '$target_path' && cd '$target_path' && $env_vars $download_cmd"
     fi
-    local remote_cmd="mkdir -p '$target_path' && cd '$target_path' && $env_vars $download_cmd"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[DRY RUN] Would execute on remote:"
         echo "  $remote_cmd"
         return 0
     fi
-    
+
     if [[ "$VERBOSE" == "true" ]]; then
         echo "Executing remote command:"
         echo "  $remote_cmd"
     fi
-    
+
     # Execute the download command on the remote system with TTY for progress display
     if ssh -t -i "$key" -p "$port" -o StrictHostKeyChecking=no "$user@$ip" "$remote_cmd"; then
         echo "Model download completed successfully!"
-        echo "Model location: $user@$ip:$target_path"
+        if [[ -n "$hf_file_path" ]]; then
+            echo "Model location: $user@$ip:$target_path/$(basename "$hf_file_path")"
+        else
+            echo "Model location: $user@$ip:$target_path"
+        fi
     else
         echo "Error: Model download failed"
         exit 1
